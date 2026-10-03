@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1423">
+  <title>Wayfinder — Flight Route Planner</title>
+  <style>
+    :root {
+      --bg: #0b1423;
+      --panel: #121f32;
+      --panel-light: #19283e;
+      --border: #28374d;
+      --text: #edf3ff;
+      --muted: #99abc3;
+      --accent: #b5f36d;
+      --cyan: #69d3ef;
+      --radius: 20px;
+    }
+
+* { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+      line-height: 1.5;
+    }
+    button, select, input { font: inherit; }
+    button, select { cursor: pointer; }
+    button { color: inherit; }
+    button:focus-visible, select:focus-visible, a:focus-visible {
+      outline: 3px solid var(--cyan);
+      outline-offset: 4px;
+    }
+    button:disabled { opacity: .4; cursor: not-allowed; }
+    a { color: inherit; }
+    .shell { max-width: 1450px; margin: auto; padding: 0 36px; }
+    header {
+      height: 90px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+    }
+    .brand {
+      display: flex;
+      gap: 11px;
+      align-items: center;
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -.8px;
+      text-decoration: none;
+    }
+    .brand-icon {
+      display: grid;
+      place-items: center;
+      height: 37px;
+      width: 37px;
+      border-radius: 11px;
+      background: var(--accent);
+      color: var(--bg);
+      font-size: 25px;
+    }
+    .nav { display: flex; gap: 32px; align-items: center; }
+    .nav a {
+      text-decoration: none;
+      font-size: 14px;
+      color: var(--muted);
+    }
+    .nav a.active { color: var(--text); }
+    .demo-tag, .eyebrow {
+      text-transform: uppercase;
+      letter-spacing: 1.7px;
+      font-size: 10px;
+      font-weight: 800;
+    }
+    .demo-tag {
+      border: 1px solid var(--border);
+      padding: 7px 11px;
+      border-radius: 30px;
+      color: var(--accent);
+    }
+    .intro {
+      padding: 44px 0 30px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 24px;
+    }
+    .eyebrow { color: var(--accent); margin: 0 0 10px; }
+    h1 {
+      font-size: clamp(32px, 4vw, 48px);
+      letter-spacing: -2px;
+      line-height: 1.12;
+      margin: 0 0 14px;
+      font-weight: 650;
+    }
+    .subtitle { color: var(--muted); margin: 0; font-size: 14px; }
+    .intro-note {
+      color: var(--muted);
+      font-size: 12px;
+      padding-bottom: 4px;
+      white-space: nowrap;
+    }
+    .intro-note span { color: var(--accent); margin-right: 7px; }
+    .workspace {
+      display: grid;
+      grid-template-columns: 340px minmax(0, 1fr);
+      gap: 22px;
+      align-items: start;
+    }
+    .panel {
+      border: 1px solid var(--border);
+      background: var(--panel);
+      border-radius: var(--radius);
+    }
+    .planner { padding: 25px; }
+    .section-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 23px;
+    }
+    h2 { font-size: 17px; margin: 0; font-weight: 650; }
+    .small-icon { color: var(--muted); font-size: 20px; }
+    .field { display: block; margin-bottom: 18px; }
+    .field-label {
+      display: block;
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+    select {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      background: #0f1b2c;
+      color: var(--text);
+      padding: 15px 10px;
+      font-size: 13px;
+    }
+    .airports { position: relative; }
+    .swap {
+      position: absolute;
+      right: 14px;
+      top: 75px;
+      width: 30px;
+      height: 30px;
+      border-radius: 9px;
+      border: 1px solid #455770;
+      background: var(--panel-light);
+      z-index: 1;
+    }
+    .divider { border: 0; border-top: 1px solid var(--border); margin: 23px 0; }
+    .segmented {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 4px;
+      padding: 4px;
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      background: #0f1b2c;
+      margin-bottom: 19px;
+    }
+    .segmented button {
+      background: transparent;
+      color: var(--muted);
+      border: 0;
+      border-radius: 7px;
+      font-size: 12px;
+      padding: 9px 3px;
+    }
+    .segmented button[aria-pressed="true"] {
+      color: var(--text);
+      background: #2b3c53;
+    }
+    .primary {
+      border: 0;
+      background: var(--accent);
+      color: #172512;
+      border-radius: 11px;
+      width: 100%;
+      padding: 14px 18px;
+      font-weight: 800;
+      font-size: 14px;
+      display: flex;
+      justify-content: space-between;
+      transition: background .15s, transform .15s;
+    }
+    .primary:hover { background: #c9ff8e; transform: translateY(-1px); }
+    .helper { font-size: 11px; color: var(--muted); margin: 14px 0 0; }
+    .error { font-size: 12px; color: #ffb0a5; margin: 10px 0; }
+    .tip {
+      margin-top: 18px;
+      padding: 21px;
+      background: linear-gradient(125deg, #1b302d, #152235);
+      border: 1px solid #304443;
+      border-radius: 16px;
+    }
+    .tip strong { font-size: 13px; }
+    .tip p { color: var(--muted); font-size: 12px; margin: 8px 0 0; }
+    .right-column { min-width: 0; }
+    .map-panel { overflow: hidden; position: relative; }
+    .map-topbar {
+      padding: 21px 23px 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 15px;
+    }
+    .map-title { font-size: 13px; font-weight: 650; }
+    .map-subtitle { color: var(--muted); font-size: 11px; margin-top: 3px; }
+    .map-controls { display: flex; gap: 7px; }
+    .map-controls button {
+      width: 31px;
+      height: 31px;
+      background: var(--panel-light);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+    .map-frame {
+      overflow: hidden;
+      background: radial-gradient(ellipse at center, #192d44 0%, #121f32 70%);
+      margin-top: 5px;
+    }
+    #route-map { width: 100%; display: block; height: 335px; }
+    .map-bottom {
+      padding: 0 23px 19px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      color: var(--muted);
+      font-size: 10px;
+    }
+    .legend { display: flex; gap: 16px; flex-wrap: wrap; }
+    .legend span { display: flex; align-items: center; gap: 6px; }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: #60758e; }
+    .dot.selected { background: var(--accent); }
+    .line { width: 15px; height: 2px; background: var(--accent); }
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      margin-top: 18px;
+      border: 1px solid var(--border);
+      border-radius: 15px;
+      background: var(--panel);
+    }
+    .metric { padding: 18px 21px; min-width: 0; }
+    .metric + .metric { border-left: 1px solid var(--border); }
+    .metric-label { color: var(--muted); font-size: 11px; }
+    .metric-value { font-size: 23px; font-weight: 650; letter-spacing: -.8px; margin-top: 4px; }
+    .metric-value small { font-size: 12px; color: var(--muted); font-weight: 400; }
+    .results-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 26px 0 13px;
+      gap: 15px;
+    }
+    .count { color: var(--muted); font-size: 12px; }
+    #routes { display: grid; gap: 10px; }
+    .route-card {
+      width: 100%;
+      text-align: left;
+      padding: 18px 20px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 18px;
+      transition: border-color .15s, background .15s;
+    }
+    .route-card:hover { background: #192a40; }
+    .route-card[aria-pressed="true"] {
+      border-color: var(--accent);
+      background: #182b30;
+    }
+    .route-airports { font-size: 17px; letter-spacing: .5px; font-weight: 650; }
+    .route-airports span { color: var(--muted); padding: 0 8px; font-weight: 400; }
+    .route-meta { color: var(--muted); font-size: 11px; margin-top: 6px; }
+    .route-distance { font-size: 15px; font-weight: 650; text-align: right; }
+    .route-badge { color: var(--accent); font-size: 10px; text-align: right; margin-top: 6px; }
+    .empty { padding: 30px; text-align: center; color: var(--muted); font-size: 13px; }
+    .export {
+      margin: 17px 0 0;
+      background: transparent;
+      border: 0;
+      color: var(--cyan);
+      font-size: 12px;
+      padding: 5px 0;
+    }
+    footer {
+      margin-top: 40px;
+      padding: 23px 0 28px;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 11px;
+      display: flex;
+      justify-content: space-between;
+      gap: 25px;
+    }
+    footer p { margin: 0; max-width: 800px; }
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+@media (max-width: 1050px) {
+      .shell { padding: 0 24px; }
+      .workspace { grid-template-columns: 300px minmax(0, 1fr); gap: 16px; }
+      .planner { padding: 20px; }
+      .intro-note { display: none; }
+      .metric { padding: 16px 13px; }
+      .metric-value { font-size: 20px; }
+      .route-airports { font-size: 14px; }
+      .route-airports span { padding: 0 4px; }
+    }
+    @media (max-width: 780px) {
+      header { height: 75px; }
+      .nav a { display: none; }
+      .intro { padding-top: 30px; }
+      .workspace { grid-template-columns: 1fr; }
+      .tip { display: none; }
+      .planner { padding: 23px; }
+      #route-map { height: 300px; }
+      .map-bottom { flex-wrap: wrap; }
+      footer { flex-direction: column; gap: 12px; }
+    }
+    @media (max-width: 420px) {
+      .shell { padding: 0 16px; }
+      .brand { font-size: 19px; }
+      .metric { padding: 14px 9px; }
+      .metric-label { font-size: 10px; }
+      .metric-value { font-size: 17px; }
+      .route-card { padding: 15px 12px; gap: 10px; }
+      .route-airports { font-size: 13px; }
+      .map-topbar { padding: 18px 15px 0; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <a class="brand" href="#" aria-label="Wayfinder home">
+        <span class="brand-icon" aria-hidden="true">↗</span>
+        wayfinder
+      </a>
+      <nav class="nav" aria-label="Main navigation">
+        <a class="active" href="#planner">Route planner</a>
+        <a href="#results-section">Explore routes</a>
+        <span class="demo-tag">Interactive demo</span>
+      </nav>
+    </header>
+
+<main>
+      <section class="intro">
+        <div>
+          <p class="eyebrow">A little planning. A world of possibilities.</p>
+          <h1>Your next journey, mapped.</h1>
+          <p class="subtitle">Connect the dots. Compare routes. Find your way there.</p>
+        </div>
+        <div class="intro-note"><span>●</span> 12 airports · Sample network</div>
+      </section>
+
+<div class="workspace">
+        <aside>
+          <form class="panel planner" id="planner">
+            <div class="section-heading">
+              <h2>Plan your route</h2>
+              <span class="small-icon" aria-hidden="true">↗</span>
+            </div>
+
+<div class="airports">
+              <label class="field">
+                <span class="field-label">DEPARTING FROM</span>
+                <select id="origin" required aria-label="Departure airport"></select>
+              </label>
+
+<button class="swap" id="swap" type="button"
+                      aria-label="Swap departure and destination">⇅</button>
+
+<label class="field">
+                <span class="field-label">GOING TO</span>
+                <select id="destination" required aria-label="Destination airport"></select>
+              </label>
+            </div>
+
+<hr class="divider">
+
+<span class="field-label" id="stops-label">CONNECTIONS</span>
+            <div class="segmented" role="group" aria-labelledby="stops-label">
+              <button type="button" data-stops="0" aria-pressed="false">Nonstop</button>
+              <button type="button" data-stops="1" aria-pressed="true">Up to 1</button>
+              <button type="button" data-stops="2" aria-pressed="false">Up to 2</button>
+            </div>
+
+<label class="field">
+              <span class="field-label">PRIORITIZE</span>
+              <select id="priority">
+                <option value="distance">Shortest distance</option>
+                <option value="stops">Fewest connections</option>
+                <option value="time">Lowest estimated duration</option>
+              </select>
+            </label>
+
+<p id="error" class="error" role="alert" hidden></p>
+
+<button class="primary" type="submit">
+              Find routes <span aria-hidden="true">↗</span>
+            </button>
+            <p class="helper">Explore sample connections. No live fares or schedules.</p>
+          </form>
+
+<div class="tip">
+            <strong>✧ Take the scenic connection</strong>
+            <p>
+              Allow another stop to discover more ways to reach your destination.
+              Select a result to see its route on the map.
+            </p>
+          </div>
+        </aside>
+
+<section class="right-column" aria-label="Route planning results">
+          <div class="panel map-panel">
+            <div class="map-topbar">
+              <div>
+                <div class="map-title" id="map-heading">Your route overview</div>
+                <div class="map-subtitle">Geographic airport plot · illustrative paths</div>
+              </div>
+              <div class="map-controls" aria-label="Map controls">
+                <button id="zoom-out" type="button" aria-label="Zoom out">−</button>
+                <button id="zoom-in" type="button" aria-label="Zoom in">+</button>
+                <button id="zoom-reset" type="button" aria-label="Reset map view">↺</button>
+              </div>
+            </div>
+
+<div class="map-frame">
+              <svg id="route-map" viewBox="0 0 940 420"
+                   role="img" aria-labelledby="map-svg-title map-svg-desc">
+                <title id="map-svg-title">Airport route map</title>
+                <desc id="map-svg-desc">
+                  Airports plotted by approximate longitude and latitude.
+                  Select a route below to highlight its connections.
+                </desc>
+                <defs>
+                  <filter id="glow" x="-100%" y="-100%" width="300%" height="300%">
+                    <feGaussianBlur stdDeviation="4"/>
+                  </filter>
+                  <pattern id="dots" width="15" height="15" patternUnits="userSpaceOnUse">
+                    <circle cx="1" cy="1" r=".7" fill="#47617e" opacity=".22"/>
+                  </pattern>
+                </defs>
+                <rect width="940" height="420" fill="url(#dots)"/>
+                <g id="map-layer"></g>
+              </svg>
+            </div>
+
+<div class="map-bottom">
+              <div class="legend">
+                <span><i class="dot selected"></i> Selected airport</span>
+                <span><i class="line"></i> Your route</span>
+                <span><i class="dot"></i> Sample airport</span>
+              </div>
+              <span>Not for navigation</span>
+            </div>
+          </div>
+
+<div class="metrics" aria-label="Selected route summary">
+            <div class="metric">
+              <div class="metric-label">Total distance</div>
+              <div class="metric-value" id="distance">—</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Estimated journey</div>
+              <div class="metric-value" id="duration">—</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Connections</div>
+              <div class="metric-value" id="connections">—</div>
+            </div>
+          </div>
+
+<section id="results-section" aria-labelledby="results-heading">
+            <div class="results-header">
+              <h2 id="results-heading">Suggested routes</h2>
+              <span id="result-count" class="count"></span>
+            </div>
+            <div id="routes"></div>
+            <button id="export" class="export" type="button" disabled>
+              ↓ Download selected itinerary
+            </button>
+            <p id="status" class="sr-only" role="status" aria-live="polite"></p>
+          </section>
+        </section>
+      </div>
+    </main>
+
+<footer>
+      <p>
+        Demo only. Connections are synthetic. Distances use approximate airport
+        coordinates; journey times assume 820 km/h, 30 minutes per leg, and
+        90 minutes per connection. Actual services, paths, and timings vary.
+      </p>
+      <span>wayfinder / Go somewhere new.</span>
+    </footer>
+  </div>
+
+<script>
+    "use strict";
+
+// Approximate coordinates for visualization and distance estimation.
+    // Edges below are a fictional network, not an airline schedule.
+    const airports = {
+      JFK: { city: "New York", name: "John F. Kennedy", lat: 40.64, lon: -73.78 },
+      SFO: { city: "San Francisco", name: "San Francisco International", lat: 37.62, lon: -122.38 },
+      LHR: { city: "London", name: "Heathrow", lat: 51.47, lon: -0.45 },
+      CDG: { city: "Paris", name: "Charles de Gaulle", lat: 49.01, lon: 2.55 },
+      DXB: { city: "Dubai", name: "Dubai International", lat: 25.25, lon: 55.36 },
+      DOH: { city: "Doha", name: "Hamad International", lat: 25.27, lon: 51.61 },
+      DEL: { city: "New Delhi", name: "Indira Gandhi International", lat: 28.56, lon: 77.10 },
+      BOM: { city: "Mumbai", name: "Chhatrapati Shivaji Maharaj International", lat: 19.09, lon: 72.87 },
+      BKK: { city: "Bangkok", name: "Suvarnabhumi", lat: 13.69, lon: 100.75 },
+      SIN: { city: "Singapore", name: "Changi", lat: 1.36, lon: 103.99 },
+      HND: { city: "Tokyo", name: "Haneda", lat: 35.55, lon: 139.78 },
+      SYD: { city: "Sydney", name: "Sydney Kingsford Smith", lat: -33.94, lon: 151.18 }
+    };
+
+const edges = [
+      ["SFO", "JFK"], ["SFO", "LHR"], ["JFK", "LHR"],
+      ["JFK", "CDG"], ["JFK", "DXB"], ["LHR", "CDG"],
+      ["LHR", "DXB"], ["LHR", "DOH"], ["LHR", "DEL"],
+      ["CDG", "DOH"], ["CDG", "BOM"], ["DXB", "DEL"],
+      ["DXB", "BOM"], ["DXB", "SIN"], ["DXB", "BKK"],
+      ["DOH", "DEL"], ["DOH", "SIN"], ["DEL", "BOM"],
+      ["DEL", "BKK"], ["DEL", "SIN"], ["BOM", "SIN"],
+      ["BKK", "SIN"], ["BKK", "HND"], ["SIN", "HND"],
+      ["SIN", "SYD"], ["HND", "SYD"]
+    ];
+
+const $ = id => document.getElementById(id);
+    const graph = Object.fromEntries(Object.keys(airports).map(code => [code, []]));
+
+for (const [a, b] of edges) {
+      graph[a].push(b);
+      graph[b].push(a);
+    }
+
+let maxStops = 1;
+    let currentRoutes = [];
+    let selectedIndex = 0;
+    let zoom = 1;
+    let mapCenter = { x: 470, y: 210 };
+
+const number = value => Math.round(value).toLocaleString();
+    const radians = degrees => degrees * Math.PI / 180;
+
+function distanceBetween(a, b) {
+      const p = airports[a];
+      const q = airports[b];
+      const dLat = radians(q.lat - p.lat);
+      const dLon = radians(q.lon - p.lon);
+      const h = Math.sin(dLat / 2) ** 2 +
+        Math.cos(radians(p.lat)) * Math.cos(radians(q.lat)) *
+        Math.sin(dLon / 2) ** 2;
+
+return 6371 * 2 * Math.atan2(
+        Math.sqrt(h),
+        Math.sqrt(Math.max(0, 1 - h))
+      );
+    }
+
+function getRoute(path) {
+      let distance = 0;
+      for (let i = 1; i < path.length; i++) {
+        distance += distanceBetween(path[i - 1], path[i]);
+      }
+      const legs = path.length - 1;
+      const stops = legs - 1;
+      const minutes = Math.round(distance / 820 * 60 + legs * 30 + stops * 90);
+      return { path, distance, stops, minutes };
+    }
+
+function formatTime(minutes) {
+      return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
+    }
+
+function findRoutes(origin, destination, limit) {
+      const found = [];
+
+function visit(path) {
+        const last = path[path.length - 1];
+        if (last === destination) {
+          found.push(getRoute(path));
+          return;
+        }
+        if (path.length - 1 >= limit + 1) return;
+
+for (const next of graph[last]) {
+          if (!path.includes(next)) visit([...path, next]);
+        }
+      }
+
+visit([origin]);
+      return found;
+    }
+
+function populateAirports() {
+      const sorted = Object.entries(airports)
+        .sort((a, b) => a[1].city.localeCompare(b[1].city));
+
+for (const [code, airport] of sorted) {
+        for (const id of ["origin", "destination"]) {
+          const option = document.createElement("option");
+          option.value = code;
+          option.textContent = `${airport.city} (${code})`;
+          $(id).appendChild(option);
+        }
+      }
+
+$("origin").value = "LHR";
+      $("destination").value = "SIN";
+    }
+
+function project(code) {
+      const { lon, lat } = airports[code];
+      return {
+        x: 35 + (lon + 180) / 360 * 870,
+        y: 30 + (80 - lat) / 140 * 360
+      };
+    }
+
+function svgElement(tag, attributes, text) {
+      const element = document.createElementNS("http://www.w3.org/2000/svg", tag);
+      for (const [key, value] of Object.entries(attributes)) {
+        element.setAttribute(key, value);
+      }
+      if (text !== undefined) element.textContent = text;
+      return element;
+    }
+
+function arc(a, b) {
+      const p = project(a);
+      const q = project(b);
+      const lift = Math.min(85, Math.hypot(q.x - p.x, q.y - p.y) * .23);
+      return `M ${p.x} ${p.y} Q ${(p.x + q.x) / 2} ${(p.y + q.y) / 2 - lift} ${q.x} ${q.y}`;
+    }
+
+function updateZoom() {
+      $("map-layer").setAttribute(
+        "transform",
+        `translate(${470 - mapCenter.x * zoom} ${210 - mapCenter.y * zoom}) scale(${zoom})`
+      );
+      $("zoom-out").disabled = zoom <= 1;
+      $("zoom-in").disabled = zoom >= 2.5;
+    }
+
+function drawMap(route) {
+      const layer = $("map-layer");
+      layer.replaceChildren();
+
+for (let lon = -150; lon <= 150; lon += 30) {
+        const x = 35 + (lon + 180) / 360 * 870;
+        layer.appendChild(svgElement("line", {
+          x1: x, y1: 25, x2: x, y2: 397,
+          stroke: "#304158", "stroke-width": .6, opacity: .45
+        }));
+      }
+
+for (let lat = -30; lat <= 60; lat += 30) {
+        const y = 30 + (80 - lat) / 140 * 360;
+        layer.appendChild(svgElement("line", {
+          x1: 25, y1: y, x2: 915, y2: y,
+          stroke: "#304158", "stroke-width": .6, opacity: .45
+        }));
+        layer.appendChild(svgElement("text", {
+          x: 15, y: y - 5, fill: "#657990", "font-size": 8
+        }, `${Math.abs(lat)}°${lat > 0 ? "N" : lat < 0 ? "S" : ""}`));
+      }
+
+for (const [a, b] of edges) {
+        layer.appendChild(svgElement("path", {
+          d: arc(a, b),
+          fill: "none",
+          stroke: "#476580",
+          "stroke-width": 1,
+          opacity: .19
+        }));
+      }
+
+const selected = new Set(route ? route.path : []);
+      if (route) {
+        for (let i = 1; i < route.path.length; i++) {
+          const d = arc(route.path[i - 1], route.path[i]);
+          layer.appendChild(svgElement("path", {
+            d, fill: "none", stroke: "#b5f36d",
+            "stroke-width": 6, opacity: .17, filter: "url(#glow)"
+          }));
+          layer.appendChild(svgElement("path", {
+            d, fill: "none", stroke: "#b5f36d",
+            "stroke-width": 2.3, "stroke-linecap": "round"
+          }));
+        }
+      }
+
+// Offsets separate labels in geographically dense regions.
+      const offsets = {
+        LHR: [-12, -15], CDG: [17, 19],
+        DOH: [-18, 21], DXB: [19, -10],
+        DEL: [9, -14], BOM: [-17, 20],
+        BKK: [-16, -12], SIN: [9, 20]
+      };
+
+const codes = Object.keys(airports).sort(
+        (a, b) => Number(selected.has(a)) - Number(selected.has(b))
+      );
+
+for (const code of codes) {
+        const point = project(code);
+        const active = selected.has(code);
+        const group = svgElement("g", {});
+        group.appendChild(svgElement("title", {},
+          `${airports[code].city} — ${airports[code].name} (${code})`
+        ));
+
+if (active) {
+          group.appendChild(svgElement("circle", {
+            cx: point.x, cy: point.y, r: 10,
+            fill: "#b5f36d", opacity: .12
+          }));
+        }
+
+group.appendChild(svgElement("circle", {
+          cx: point.x, cy: point.y, r: active ? 4.4 : 3,
+          fill: active ? "#b5f36d" : "#657e98",
+          stroke: "#121f32", "stroke-width": 1.7
+        }));
+
+const [dx, dy] = offsets[code] || [0, -13];
+        group.appendChild(svgElement("text", {
+          x: point.x + dx, y: point.y + dy,
+          "text-anchor": "middle",
+          fill: active ? "#e1f8c9" : "#8ba2bb",
+          "font-size": active ? 11 : 9,
+          "font-weight": active ? 700 : 500,
+          stroke: "#121f32",
+          "stroke-width": 3,
+          "paint-order": "stroke"
+        }, code));
+
+layer.appendChild(group);
+      }
+
+if (route) {
+        const points = route.path.map(project);
+        mapCenter = {
+          x: (Math.min(...points.map(p => p.x)) + Math.max(...points.map(p => p.x))) / 2,
+          y: (Math.min(...points.map(p => p.y)) + Math.max(...points.map(p => p.y))) / 2
+        };
+      }
+
+if (zoom === 1) {
+        layer.removeAttribute("transform");
+        $("zoom-out").disabled = true;
+        $("zoom-in").disabled = false;
+      } else {
+        updateZoom();
+      }
+    }
+
+function selectRoute(index, announce = true) {
+      selectedIndex = index;
+      const route = currentRoutes[index];
+
+document.querySelectorAll(".route-card").forEach((card, i) => {
+        card.setAttribute("aria-pressed", String(i === index));
+      });
+
+$("export").disabled = !route;
+
+if (!route) {
+        $("distance").textContent = "—";
+        $("duration").textContent = "—";
+        $("connections").textContent = "—";
+        $("map-heading").textContent = "Sample airport network";
+        drawMap(null);
+        return;
+      }
+
+$("distance").innerHTML = `${number(route.distance)} <small>km</small>`;
+      $("duration").textContent = formatTime(route.minutes);
+      $("connections").textContent = route.stops === 0 ? "Nonstop" : String(route.stops);
+
+const first = route.path[0];
+      const last = route.path[route.path.length - 1];
+      $("map-heading").textContent = `${airports[first].city} → ${airports[last].city}`;
+      $("map-svg-desc").textContent =
+        `Selected illustrative route: ${route.path.join(" to ")}. ` +
+        `Approximate distance ${number(route.distance)} kilometers.`;
+
+drawMap(route);
+
+if (announce) {
+        $("status").textContent =
+          `Selected ${route.path.join(" to ")}. ` +
+          `${number(route.distance)} kilometers, estimated ${formatTime(route.minutes)}.`;
+      }
+    }
+
+function renderResults(total) {
+      const container = $("routes");
+      container.replaceChildren();
+
+$("result-count").textContent = total > 3
+        ? `Top 3 of ${total} options`
+        : `${total} ${total === 1 ? "option" : "options"}`;
+
+if (!currentRoutes.length) {
+        const empty = document.createElement("div");
+        empty.className = "panel empty";
+        empty.textContent =
+          "No sample routes match. Allow more connections or try another airport.";
+        container.appendChild(empty);
+        selectRoute(-1, false);
+        return;
+      }
+
+currentRoutes.forEach((route, index) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "route-card";
+        button.setAttribute("aria-pressed", "false");
+        button.setAttribute("aria-label",
+          `${route.path.join(" to ")}, ${route.stops} connections, ` +
+          `${number(route.distance)} kilometers, estimated ${formatTime(route.minutes)}`
+        );
+
+const connectionText = route.stops === 0
+          ? "Nonstop"
+          : `${route.stops} ${route.stops === 1 ? "connection" : "connections"}`;
+
+// All interpolated values originate from the fixed demo dataset.
+        button.innerHTML = `
+          <div>
+            <div class="route-airports">${route.path.join('<span>→</span>')}</div>
+            <div class="route-meta">${connectionText} · Est. ${formatTime(route.minutes)}</div>
+          </div>
+          <div>
+            <div class="route-distance">${number(route.distance)} km</div>
+            <div class="route-badge">${index === 0 ? "BEST MATCH" : "ALTERNATIVE"}</div>
+          </div>
+        `;
+
+button.addEventListener("click", () => selectRoute(index));
+        container.appendChild(button);
+      });
+
+selectRoute(0, false);
+    }
+
+function planRoute(event) {
+      if (event) event.preventDefault();
+
+const origin = $("origin").value;
+      const destination = $("destination").value;
+      $("error").hidden = true;
+
+if (origin === destination) {
+        $("error").textContent = "Choose two different airports to plan a route.";
+        $("error").hidden = false;
+        $("destination").focus();
+        return;
+      }
+
+const priority = $("priority").value;
+      const results = findRoutes(origin, destination, maxStops);
+
+results.sort((a, b) => {
+        if (priority === "stops") return a.stops - b.stops || a.distance - b.distance;
+        if (priority === "time") return a.minutes - b.minutes || a.distance - b.distance;
+        return a.distance - b.distance || a.stops - b.stops;
+      });
+
+currentRoutes = results.slice(0, 3);
+      zoom = 1;
+      renderResults(results.length);
+
+$("status").textContent =
+        `${results.length} sample routes found from ${airports[origin].city} ` +
+        `to ${airports[destination].city}. ` +
+        (results.length ? "The best matching route is selected." : "Try allowing more connections.");
+    }
+
+$("planner").addEventListener("submit", planRoute);
+
+$("swap").addEventListener("click", () => {
+      const previous = $("origin").value;
+      $("origin").value = $("destination").value;
+      $("destination").value = previous;
+      planRoute();
+    });
+
+document.querySelectorAll("[data-stops]").forEach(button => {
+      button.addEventListener("click", () => {
+        maxStops = Number(button.dataset.stops);
+        document.querySelectorAll("[data-stops]").forEach(item => {
+          item.setAttribute("aria-pressed", String(item === button));
+        });
+        planRoute();
+      });
+    });
+
+for (const id of ["origin", "destination", "priority"]) {
+      $(id).addEventListener("change", planRoute);
+    }
+
+$("zoom-in").addEventListener("click", () => {
+      zoom = Math.min(2.5, zoom + .25);
+      updateZoom();
+    });
+
+$("zoom-out").addEventListener("click", () => {
+      zoom = Math.max(1, zoom - .25);
+      if (zoom === 1) drawMap(currentRoutes[selectedIndex]);
+      else updateZoom();
+    });
+
+$("zoom-reset").addEventListener("click", () => {
+      zoom = 1;
+      drawMap(currentRoutes[selectedIndex]);
+    });
+
+$("export").addEventListener("click", () => {
+      const route = currentRoutes[selectedIndex];
+      if (!route) return;
+
+const lines = [
+        "WAYFINDER — SAMPLE ITINERARY",
+        "",
+        `Route: ${route.path.join(" → ")}`,
+        `Approximate distance: ${number(route.distance)} km`,
+        `Estimated journey: ${formatTime(route.minutes)}`,
+        `Connections: ${route.stops}`,
+        "",
+        "LEGS"
+      ];
+
+for (let i = 1; i < route.path.length; i++) {
+        const from = route.path[i - 1];
+        const to = route.path[i];
+        lines.push(
+          `${i}. ${airports[from].city} (${from}) → ${airports[to].city} (${to})`,
+          `   Approximate distance: ${number(distanceBetween(from, to))} km`
+        );
+      }
+
+lines.push(
+        "",
+        "DEMO ONLY — NOT A TICKET OR CONFIRMED FLIGHT ITINERARY.",
+        "Connections are synthetic; no schedules or availability were checked.",
+        "Distance estimates use approximate coordinates and great-circle calculations.",
+        "Time estimate: 820 km/h + 30 minutes per leg + 90 minutes per connection.",
+        "Actual routing, schedules, transfer requirements, and timings vary."
+      );
+
+const blob = new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `wayfinder-${route.path[0]}-${route.path.at(-1)}.txt`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      $("status").textContent = "Selected sample itinerary downloaded.";
+    });
+
+populateAirports();
+    planRoute();
+  </script>
+</body>
+</html>
